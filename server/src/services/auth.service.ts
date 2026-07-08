@@ -75,3 +75,23 @@ export async function loginUser(data: LoginUserData): Promise<AuthResponse> {
     token,
   }
 }
+
+export async function getCurrentUser(userId: string): Promise<AuthResponse['user'] | null> {
+  const user = await User.findById(userId)
+  if (!user) {
+    return null
+  }
+
+  return {
+    _id: user._id.toString(),
+    fullName: user.fullName,
+    email: user.email,
+    avatar: user.avatar,
+    role: user.role,
+    isVerified: user.isVerified,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt,
+  }
+}
+
+

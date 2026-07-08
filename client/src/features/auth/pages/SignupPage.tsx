@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Button } from '../../../components/ui/Button'
 import { Input } from '../../../components/ui/Input'
 import { AuthLayout } from '../components/AuthLayout'
@@ -7,6 +7,8 @@ import { GoogleIcon } from '../components/GoogleIcon'
 import { PasswordStrength } from '../components/PasswordStrength'
 import { PasswordToggle } from '../components/PasswordToggle'
 import { getPasswordStrength, validateEmail, validateRequired } from '../validation'
+import { signup } from '../../../services/auth.service'
+import { useAuth } from '../AuthContext'
 
 type SignupErrors = {
   confirmPassword?: string
@@ -25,6 +27,10 @@ export function SignupPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [errors, setErrors] = useState<SignupErrors>({})
+  const [isLoading, setIsLoading] = useState(false)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const navigate = useNavigate()
+  const { refreshUser } = useAuth()
 
   function validateForm() {
     const strength = getPasswordStrength(password)
@@ -44,9 +50,25 @@ export function SignupPage() {
     return !Object.values(nextErrors).some(Boolean)
   }
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    validateForm()
+    setErrorMsg(null)
+
+    if (!validateForm()) {
+      return
+    }
+
+    setIsLoading(true)
+    try {
+      await signup(fullName, email, password)
+      await refreshUser()
+      navigate('/')
+    } catch (err: any) {
+      const backendError = err.response?.data?.message || err.message || 'Signup failed'
+      setErrorMsg(backendError)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -59,11 +81,16 @@ export function SignupPage() {
         <p className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-200">Signup</p>
         <h2 className="mt-2 text-3xl font-semibold text-white">Create your account</h2>
         <p className="mt-2 text-sm leading-6 text-slate-400">
-          Frontend validation only. No account will be created yet.
+          Enter your information to create a new GMeeting account.
         </p>
       </div>
 
       <form className="space-y-5" noValidate onSubmit={handleSubmit}>
+        {errorMsg && (
+          <div className="rounded-lg border border-red-500/20 bg-red-950/20 p-4 text-sm text-red-400">
+            {errorMsg}
+          </div>
+        )}
         <Input
           label="Full Name"
           name="fullName"
@@ -175,8 +202,8 @@ export function SignupPage() {
           ) : null}
         </div>
 
-        <Button type="submit" fullWidth>
-          Create Account
+        <Button type="submit" fullWidth disabled={isLoading}>
+          {isLoading ? 'Creating Account...' : 'Create Account'}
         </Button>
 
         <div className="flex items-center gap-4 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">

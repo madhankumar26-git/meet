@@ -1,11 +1,13 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Button } from '../../../components/ui/Button'
 import { Input } from '../../../components/ui/Input'
 import { AuthLayout } from '../components/AuthLayout'
 import { GoogleIcon } from '../components/GoogleIcon'
 import { PasswordToggle } from '../components/PasswordToggle'
 import { validateEmail, validateRequired } from '../validation'
+import { login } from '../../../services/auth.service'
+import { useAuth } from '../AuthContext'
 
 type LoginErrors = {
   email?: string
@@ -18,6 +20,10 @@ export function LoginPage() {
   const [rememberMe, setRememberMe] = useState(true)
   const [showPassword, setShowPassword] = useState(false)
   const [errors, setErrors] = useState<LoginErrors>({})
+  const [isLoading, setIsLoading] = useState(false)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const navigate = useNavigate()
+  const { refreshUser } = useAuth()
 
   function validateForm() {
     const nextErrors: LoginErrors = {
@@ -29,9 +35,25 @@ export function LoginPage() {
     return !Object.values(nextErrors).some(Boolean)
   }
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    validateForm()
+    setErrorMsg(null)
+
+    if (!validateForm()) {
+      return
+    }
+
+    setIsLoading(true)
+    try {
+      await login(email, password)
+      await refreshUser()
+      navigate('/')
+    } catch (err: any) {
+      const backendError = err.response?.data?.message || err.message || 'Login failed'
+      setErrorMsg(backendError)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -49,6 +71,11 @@ export function LoginPage() {
       </div>
 
       <form className="space-y-5" noValidate onSubmit={handleSubmit}>
+        {errorMsg && (
+          <div className="rounded-lg border border-red-500/20 bg-red-950/20 p-4 text-sm text-red-400">
+            {errorMsg}
+          </div>
+        )}
         <Input
           label="Email"
           name="email"
@@ -99,8 +126,8 @@ export function LoginPage() {
           </a>
         </div>
 
-        <Button type="submit" fullWidth>
-          Login
+        <Button type="submit" fullWidth disabled={isLoading}>
+          {isLoading ? 'Logging in...' : 'Login'}
         </Button>
 
         <div className="flex items-center gap-4 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
