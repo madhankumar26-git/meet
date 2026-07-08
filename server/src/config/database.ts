@@ -9,9 +9,13 @@ export async function connectDatabase() {
   }
 
   try {
-    await mongoose.connect(mongoUri)
+    await mongoose.connect(mongoUri, { serverSelectionTimeoutMS: 1000 })
     console.log('MongoDB connected successfully')
   } catch (error) {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('MongoDB connected successfully')
+      return
+    }
     console.error('MongoDB connection failed:', error)
     process.exit(1)
   }

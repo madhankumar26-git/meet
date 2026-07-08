@@ -9,11 +9,13 @@ function getErrorMessage(error: unknown) {
 export async function signup(request: Request, response: Response) {
   try {
     const validatedData = signupSchema.parse(request.body)
-    await signupUser(validatedData)
+    const { user, token } = await signupUser(validatedData)
 
     return response.status(201).json({
       success: true,
       message: 'User created successfully',
+      user,
+      token,
     })
   } catch (error) {
     return response.status(400).json({
@@ -26,11 +28,13 @@ export async function signup(request: Request, response: Response) {
 export async function login(request: Request, response: Response) {
   try {
     const validatedData = loginSchema.parse(request.body)
-    await loginUser(validatedData)
+    const { user, token } = await loginUser(validatedData)
 
     return response.status(200).json({
       success: true,
       message: 'Login successful',
+      user,
+      token,
     })
   } catch (error) {
     return response.status(400).json({

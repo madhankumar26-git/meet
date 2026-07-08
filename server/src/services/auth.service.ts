@@ -1,4 +1,5 @@
-import User, { type UserDocument } from '../models/User'
+import User from '../models/User'
+import { generateToken } from '../utils/jwt'
 
 type SignupUserData = {
   fullName: string
@@ -11,7 +12,21 @@ type LoginUserData = {
   password: string
 }
 
-export async function signupUser(data: SignupUserData): Promise<UserDocument> {
+export interface AuthResponse {
+  user: {
+    _id: string
+    fullName: string
+    email: string
+    avatar: string
+    role: string
+    isVerified: boolean
+    createdAt: Date
+    updatedAt: Date
+  }
+  token: string
+}
+
+export async function signupUser(data: SignupUserData): Promise<AuthResponse> {
   const normalizedEmail = data.email.toLowerCase()
   const existingUser = await User.findOne({ email: normalizedEmail })
 
@@ -19,14 +34,24 @@ export async function signupUser(data: SignupUserData): Promise<UserDocument> {
     throw new Error('Email already exists')
   }
 
-  return User.create({
+  const user = await User.create({
     fullName: data.fullName,
     email: normalizedEmail,
     password: data.password,
   })
+
+  const userObject = user.toObject()
+  const { password, ...userWithoutPassword } = userObject
+
+  const token = generateToken(user._id.toString())
+
+  return {
+    user: userWithoutPassword as any,
+    token,
+  }
 }
 
-export async function loginUser(data: LoginUserData): Promise<UserDocument> {
+export async function loginUser(data: LoginUserData): Promise<AuthResponse> {
   const normalizedEmail = data.email.toLowerCase()
   const user = await User.findOne({ email: normalizedEmail })
 
@@ -40,5 +65,13 @@ export async function loginUser(data: LoginUserData): Promise<UserDocument> {
     throw new Error('Invalid email or password')
   }
 
-  return user
+  const userObject = user.toObject()
+  const { password, ...userWithoutPassword } = userObject
+
+  const token = generateToken(user._id.toString())
+
+  return {
+    user: userWithoutPassword as any,
+    token,
+  }
 }
